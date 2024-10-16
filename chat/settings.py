@@ -34,11 +34,13 @@ INSTALLED_APPS = [
     'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.sites',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'ChatApp',
+    'accounts',
 ]
 
 ASGI_APPLICATION = 'chat.asgi.application'
@@ -139,3 +141,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+
+LOGIN_REDIRECT_URL = '/chat/'
