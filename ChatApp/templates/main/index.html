@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -29,6 +28,10 @@
             border-radius: 4px;
             background-color: #e9e9e9;
         }
+        .message-info {
+            font-size: 0.8em;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -44,29 +47,27 @@
 
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            // Append new message to chat log
-            document.querySelector('#chat-log').innerHTML += `<div class="message">${data.message}</div>`;
+            console.log(data)
+            // Append new message to chat log with username and timestamp
+            document.querySelector('#chat-log').innerHTML += `
+                <div class="message">
+                    <strong>${data.user}</strong>
+                    <div>${data.message}</div>
+                    <div class="message-info">${data.datetime}</div>
+                </div>`;
             // Scroll to the bottom of the chat log
             const chatLog = document.querySelector('#chat-log');
             chatLog.scrollTop = chatLog.scrollHeight;
         };
 
-        document.querySelector('#chat-message-submit').onclick = function(e) {
+        document.querySelector('#chat-message-submit').onclick = function() {
             const messageInputDom = document.querySelector('#chat-message-input');
             const message = messageInputDom.value;
-            if (message.trim() !== '') {
-                chatSocket.send(JSON.stringify({
-                    'message': message
-                }));
-                messageInputDom.value = '';  // Clear the input field
-            }
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInputDom.value = '';
         };
-
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                document.querySelector('#chat-message-submit').click();  // Send message on Enter
-            }
-        });
     </script>
 </body>
 </html>

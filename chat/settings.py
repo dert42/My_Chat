@@ -23,14 +23,13 @@ SECRET_KEY = 'django-insecure-mwh+_8)yz--qsy1r#pjyocqv88tl6aupi-tz8%tv=4__g9+lb(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.100.109', 'localhost', '127.0.0.1']
 
 
 # Application definition
 
 INSTALLED_APPS = [
     'channels',
-
     'daphne',
     'django.contrib.admin',
     'django.contrib.auth',

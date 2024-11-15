@@ -5,9 +5,11 @@ from django.utils import timezone
 from .models import DB_Message
 from asgiref.sync import sync_to_async
 
+
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope['user']
+
         await self.channel_layer.group_add('chat', self.channel_name)
         await self.accept()
         await self.load_messages()  # Загрузка сообщений при подключении
