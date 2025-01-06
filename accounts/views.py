@@ -1,31 +1,35 @@
-from django.contrib.auth import login, logout
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from django.shortcuts import render, redirect
+from rest_framework import generics, permissions
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.contrib.auth import authenticate
+from .serializers import RegisterSerializer
+from rest_framework.permissions import AllowAny
 
 
-def register(request):
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('login')
-    else:
-        form = UserCreationForm()
-    return render(request, 'register.html', {'form': form})
+class RegisterView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = RegisterSerializer
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        # Создание токена для нового пользователя
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            'user': RegisterSerializer(user).data,
+            'token': token.key[0]
+        }, status=201)
 
 
-def user_login(request):
-    if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            return redirect('/chat/')
-    else:
-        form = AuthenticationForm()
-    return render(request, 'login.html', {'form': form})
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        user = authenticate(username=username, password=password)
 
-
-def user_logout(request):
-    logout(request)
-    return redirect('login')
+        if user is not None:
+            token = Token.objects.get_or_create(user=user)
+            print(token)
+            return Response({'token': token[0].key})
+        return Response({'error': 'Invalid Credentials'}, status=400)
