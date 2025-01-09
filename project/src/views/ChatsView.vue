@@ -12,6 +12,12 @@
       </div>
     </nav>
 
+    <div v-if="chatStore.error" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+      <div class="bg-red-100 p-4 rounded-md">
+        <p class="text-red-700">{{ chatStore.error }}</p>
+      </div>
+    </div>
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-medium text-gray-900">Your Chats</h2>
@@ -143,9 +149,13 @@ onMounted(() => {
 });
 
 const createNewChat = async () => {
-  await chatStore.createChat(newChatName.value);
-  showNewChatModal.value = false;
-  newChatName.value = '';
+  try {
+    await chatStore.createChat(newChatName.value);
+    showNewChatModal.value = false;
+    newChatName.value = '';
+  } catch (error) {
+    // Error is handled in the store
+  }
 };
 
 const showAddUserModal = (chat) => {
@@ -153,8 +163,12 @@ const showAddUserModal = (chat) => {
 };
 
 const addUserToChat = async () => {
-  await chatStore.addUserToChat(newUsername.value, selectedChat.value.name);
-  selectedChat.value = null;
-  newUsername.value = '';
+  try {
+    await chatStore.addUserToChat(newUsername.value, selectedChat.value.name);
+    selectedChat.value = null;
+    newUsername.value = '';
+  } catch (error) {
+    // Error is handled in the store
+  }
 };
 </script>

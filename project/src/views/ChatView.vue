@@ -14,6 +14,10 @@
       </div>
     </nav>
 
+    <div v-if="chatStore.error" class="bg-red-100 p-4">
+      <p class="text-red-700">{{ chatStore.error }}</p>
+    </div>
+
     <div class="flex-1 overflow-y-auto p-4">
       <div class="max-w-3xl mx-auto space-y-4">
         <div
@@ -32,7 +36,7 @@
               {{ formatDate(message.datetime) }}
             </span>
           </div>
-          <p>{{ message.message}}</p>
+          <p>{{ message.message }}</p>
         </div>
       </div>
     </div>

@@ -11,7 +11,6 @@ from .models import DB_Message, Room
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope['user']  # Получение аутентифицированного пользователя
-        print(f'Authenticated user: {self.user}')  # Проверка аутентификации
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'{self.room_name}'
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -23,7 +22,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        print(text_data)
         await self.save_message(data)
 
     async def save_message(self, content):
