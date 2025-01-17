@@ -86,7 +86,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def broadcast(self, message):
         now = timezone.now()
-        print(message)
         username = self.user.username
         await self.channel_layer.group_send(self.room_group_id,
                                             {
@@ -112,7 +111,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if self.room_id is not None:
             # DB_Message.objects.filter(room_id=room_id)
             with connection.cursor() as cursor:
-                cursor.execute('SELECT * FROM "ChatApp_db_message" WHERE room_id = %s', [self.room_id])
+                cursor.execute('SELECT * FROM "ChatApp_db_message" WHERE room_id = %s ORDER BY id;', [self.room_id])
                 messages = cursor.fetchall()
             return messages
 
