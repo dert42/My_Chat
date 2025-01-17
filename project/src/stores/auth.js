@@ -13,29 +13,30 @@ const api = axios.create({
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('token') || null,
+    token: null,
     user: null,
     error: null
   }),
-  
+
   getters: {
     isAuthenticated: (state) => !!state.token
   },
-  
+
   actions: {
     async login(username, password) {
       try {
+        // Always request a new token
         const response = await api.post('/login/', {
           username,
           password
         });
-        
         this.token = response.data.token;
+        this.user = { username };
         localStorage.setItem('token', this.token);
         api.defaults.headers.common['Authorization'] = `Token ${this.token}`;
         axios.defaults.headers.common['Authorization'] = `Token ${this.token}`;
         this.error = null;
-        
+
         router.push('/chats');
       } catch (err) {
         if (!err.response) {
@@ -52,15 +53,30 @@ export const useAuthStore = defineStore('auth', {
         });
       }
     },
-    
-    logout() {
-      this.token = null;
-      this.user = null;
-      this.error = null;
-      localStorage.removeItem('token');
-      delete api.defaults.headers.common['Authorization'];
-      delete axios.defaults.headers.common['Authorization'];
-      router.push('/login');
+
+    async logout() {
+      try {
+        // Send logout request to server
+        await api.post('/logout/', {
+          username: this.user?.username,
+          token: this.token
+        });
+      } catch (err) {
+        console.error('Logout request failed:', {
+          message: err.message,
+          status: err.response?.status,
+          statusText: err.response?.statusText
+        });
+      } finally {
+        // Clear local state regardless of server response
+        this.token = null;
+        this.user = null;
+        this.error = null;
+        localStorage.removeItem('token');
+        delete api.defaults.headers.common['Authorization'];
+        delete axios.defaults.headers.common['Authorization'];
+        router.push('/login');
+      }
     },
 
     clearError() {

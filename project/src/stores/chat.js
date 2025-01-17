@@ -15,7 +15,6 @@ const token = localStorage.getItem('token');
 if (token) {
   api.defaults.headers.common['Authorization'] = `Token ${token}`;
 }
-
 export const useChatStore = defineStore('chat', {
   state: () => ({
     chats: [],
@@ -25,10 +24,11 @@ export const useChatStore = defineStore('chat', {
     error: null,
     isReconnecting: false
   }),
-  
+
   actions: {
     async fetchChats() {
       try {
+        api.defaults.headers.common['Authorization'] = `Token ${localStorage.getItem('token')}`;
         const response = await api.get('/chat/list/');
         this.chats = response.data;
         this.error = null;
@@ -45,7 +45,7 @@ export const useChatStore = defineStore('chat', {
         });
       }
     },
-    
+
     async createChat(name) {
       try {
         const response = await api.post('/chat/create/', { name });
@@ -65,7 +65,7 @@ export const useChatStore = defineStore('chat', {
         });
       }
     },
-    
+
     async addUserToChat(username, roomName) {
       try {
         await api.post('/chat/add_user/', {
@@ -86,7 +86,7 @@ export const useChatStore = defineStore('chat', {
         });
       }
     },
-    
+
     connectToChat(roomName) {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -95,15 +95,36 @@ export const useChatStore = defineStore('chat', {
       }
 
       this.disconnectFromChat();
-      
+
       try {
         this.socket = new WebSocket(
-          `ws://${window.location.hostname}:8000/ws/chat/${roomName}/?token=${token}`
+            `ws://${window.location.hostname}:8000/ws/chat/${roomName}/?token=${token}`
         );
-        
+
         this.socket.onmessage = (event) => {
           const message = JSON.parse(event.data);
-          this.messages.push(message);
+          // Handle different message types
+          if (message.type === 'delete') {
+            this.messages = this.messages.filter(m => m.id !== message.message_id);
+          } else if (message.type === 'edit') {
+            const index = this.messages.findIndex(m => m.id === message.message_id);
+            console.log(index)
+            if (index !== -1) {
+              this.messages[index] = {
+                ...this.messages[index],
+                message: message.new_text,
+                edited: true
+              };
+            }
+          } else {
+            // Regular message
+            this.messages.push({
+              id: message.id,
+              message: message.message,
+              user: message.user,
+              datetime: message.datetime
+            });
+          }
         };
 
         this.socket.onerror = (err) => {
@@ -138,15 +159,41 @@ export const useChatStore = defineStore('chat', {
         });
       }
     },
-    
+
     sendMessage(message) {
       if (this.socket?.readyState === WebSocket.OPEN) {
-        this.socket.send(JSON.stringify({ message }));
+        this.socket.send(JSON.stringify({
+          type: 'message',
+          message
+        }));
       } else {
         this.error = 'Unable to send message. Please check your connection.';
       }
     },
-    
+
+    editMessage(messageId, newText) {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({
+          type: 'edit',
+          message_id: messageId,
+          new_text: newText
+        }));
+      } else {
+        this.error = 'Unable to edit message. Please check your connection.';
+      }
+    },
+
+    deleteMessage(messageId) {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({
+          type: 'delete',
+          message_id: messageId
+        }));
+      } else {
+        this.error = 'Unable to delete message. Please check your connection.';
+      }
+    },
+
     disconnectFromChat() {
       if (this.socket) {
         this.socket.close();

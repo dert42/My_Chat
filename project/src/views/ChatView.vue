@@ -24,20 +24,84 @@
           v-for="message in chatStore.messages"
           :key="message.datetime"
           :class="[
-            'p-4 rounded-lg max-w-[80%]',
-            message.user === username
+            'p-4 rounded-lg max-w-[80%] relative group',
+            message.user === authStore.user?.username
               ? 'ml-auto bg-blue-500 text-white'
               : 'bg-white text-gray-800'
           ]"
+          @contextmenu.prevent="showContextMenu($event, message)"
         >
           <div class="flex items-center mb-1">
             <span class="font-medium">{{ message.user }}</span>
             <span class="text-xs ml-2 opacity-75">
               {{ formatDate(message.datetime) }}
+              {{ message.edited ? '(edited)' : '' }}
             </span>
           </div>
           <p>{{ message.message }}</p>
         </div>
+      </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div
+      v-if="contextMenu.show"
+      :style="{
+        position: 'fixed',
+        top: contextMenu.y + 'px',
+        left: contextMenu.x + 'px'
+      }"
+      class="bg-white rounded-lg shadow-lg py-2 min-w-[160px] z-50"
+      v-click-outside="hideContextMenu"
+    >
+      <button
+        v-if="contextMenu.message?.user === authStore.user?.username"
+        @click="editMessage(contextMenu.message)"
+        class="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center"
+      >
+        <Edit2 class="h-4 w-4 mr-2" />
+        Edit
+      </button>
+      <button
+        v-if="contextMenu.message?.user === authStore.user?.username"
+        @click="deleteMessage(contextMenu.message)"
+        class="w-full px-4 py-2 text-left hover:bg-gray-100 text-red-600 flex items-center"
+      >
+        <Trash2 class="h-4 w-4 mr-2" />
+        Delete
+      </button>
+    </div>
+
+    <!-- Edit Message Modal -->
+    <div
+      v-if="editingMessage"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Edit Message</h3>
+        <form @submit.prevent="handleEditMessage">
+          <input
+            v-model="editedMessageText"
+            type="text"
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 mb-4"
+            @keydown.esc="cancelEdit"
+          />
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="cancelEdit"
+              class="text-gray-600 hover:text-gray-800 transition duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-200"
+            >
+              Save
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -67,27 +131,89 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useChatStore } from '../stores/chat';
-import { ArrowLeft, Send } from 'lucide-vue-next';
+import { useAuthStore } from '../stores/auth';
+import { ArrowLeft, Send, Edit2, Trash2 } from 'lucide-vue-next';
 import { format } from 'date-fns';
 
 const route = useRoute();
 const chatStore = useChatStore();
+const authStore = useAuthStore();
 const newMessage = ref('');
+
+// Context menu state
+const contextMenu = ref({
+  show: false,
+  x: 0,
+  y: 0,
+  message: null
+});
+
+// Edit message state
+const editingMessage = ref(null);
+const editedMessageText = ref('');
+
+const currentChatID = computed(() => {
+  const chat = chatStore.chats.find(chat => chat.id === parseInt(route.params.id));
+  return chat?.id|| '';
+});
 
 const currentChatName = computed(() => {
   const chat = chatStore.chats.find(chat => chat.id === parseInt(route.params.id));
-  return chat?.name || '';
+  return chat?.name|| '';
 });
 
 onMounted(() => {
-  if (currentChatName.value) {
-    chatStore.connectToChat(currentChatName.value);
+  if (currentChatID.value) {
+    chatStore.connectToChat(currentChatID.value);
   }
+  // Add click listener to hide context menu
+  document.addEventListener('click', hideContextMenu);
 });
 
 onUnmounted(() => {
   chatStore.disconnectFromChat();
+  document.removeEventListener('click', hideContextMenu);
 });
+
+const showContextMenu = (event, message) => {
+  event.preventDefault();
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    message
+  };
+};
+
+const hideContextMenu = () => {
+  contextMenu.value.show = false;
+};
+
+const editMessage = (message) => {
+  editingMessage.value = message;
+  editedMessageText.value = message.message;
+  hideContextMenu();
+};
+
+const cancelEdit = () => {
+  editingMessage.value = null;
+  editedMessageText.value = '';
+};
+
+const handleEditMessage = () => {
+  if (editedMessageText.value.trim() && editingMessage.value) {
+    console.log(editingMessage.value.id)
+    chatStore.editMessage(editingMessage.value.id, editedMessageText.value);
+    cancelEdit();
+  }
+};
+
+const deleteMessage = (message) => {
+  if (confirm('Are you sure you want to delete this message?')) {
+    chatStore.deleteMessage(message.id);
+  }
+  hideContextMenu();
+};
 
 const sendMessage = () => {
   if (newMessage.value.trim()) {
@@ -98,5 +224,20 @@ const sendMessage = () => {
 
 const formatDate = (datetime) => {
   return format(new Date(datetime), 'HH:mm');
+};
+
+// Click outside directive
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = (event) => {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event);
+      }
+    };
+    document.addEventListener('click', el.clickOutsideEvent);
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el.clickOutsideEvent);
+  }
 };
 </script>

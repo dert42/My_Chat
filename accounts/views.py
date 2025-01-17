@@ -1,10 +1,11 @@
-from rest_framework import generics, permissions
+from rest_framework import generics
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from .serializers import RegisterSerializer
 from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 
 
 class RegisterView(generics.CreateAPIView):
@@ -27,8 +28,24 @@ class LoginView(APIView):
         username = request.data.get('username')
         password = request.data.get('password')
         user = authenticate(username=username, password=password)
-
         if user is not None:
             token = Token.objects.get_or_create(user=user)
+            print('Вход: ', token)
+            print(user)
             return Response({'token': token[0].key})
         return Response({'error': 'Invalid Credentials'}, status=400)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        try:
+            # Получаем токен пользователя
+            token = Token.objects.get(user=request.user)
+            print(token)
+            print(request.user)
+            # Удаляем токен, чтобы завершить сеанс
+            token.delete()
+            return Response({'message': 'Logged out successfully'}, status=200)
+        except Token.DoesNotExist:
+            return Response({'error': 'Token not found'}, status=400)
