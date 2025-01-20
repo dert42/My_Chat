@@ -40,7 +40,14 @@
             <MessageSquare class="h-8 w-8 text-blue-500" />
             <h3 class="ml-3 text-lg font-medium text-gray-900">{{ chat.name }}</h3>
           </div>
-          
+          <button
+              @click="() => handleDeleteChat(chat)"
+              class="text-red-500 hover:text-red-700 transition duration-200"
+              title="Delete chat"
+          >
+            <Trash2 class="h-5 w-5" />
+          </button>
+
           <p class="text-sm text-gray-600 mb-4">
             {{ chat.users.length }} participants
           </p>
@@ -134,7 +141,7 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useChatStore } from '../stores/chat';
-import { LogOut, MessageSquare, Plus, UserPlus } from 'lucide-vue-next';
+import {LogOut, MessageSquare, Plus, Trash2, UserPlus} from 'lucide-vue-next';
 
 const authStore = useAuthStore();
 const chatStore = useChatStore();
@@ -171,4 +178,11 @@ const addUserToChat = async () => {
     // Error is handled in the store
   }
 };
+
+const handleDeleteChat = async (chat) => {
+  if (confirm(`Are you sure you want to delete the chat "${chat.name}"?`)) {
+    await chatStore.deleteChat(chat.id);
+  }
+};
+
 </script>

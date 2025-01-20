@@ -3,10 +3,13 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
+from django.db import connection
+from channels.db import database_sync_to_async
+
 from .models import Room, DB_Message
 from .serializers import RoomSerializer, DBMessageSerializer, UserSerializer
 
-print(IsAuthenticated)
+
 # Представление для списка чатов
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -66,3 +69,17 @@ def add_user(request):
             return Response({'error': 'Комната не найдена.'}, status=status.HTTP_404_NOT_FOUND)
         except User.DoesNotExist:
             return Response({'error': 'Пользователь не найден.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_chat(request, room_id):
+    def get_user_id(username):
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT id FROM "auth_user" WHERE username = %s', [username])
+            id = cursor.fetchone()
+            id = id[0]
+            return id
+    user_id = get_user_id(request.user.username)
+    with connection.cursor() as cursor:
+        cursor.execute('DELETE FROM "ChatApp_room_users"  WHERE room_id = %s AND user_id = %s', [room_id, user_id])
+        return Response({'status': 'Done'}, status=status.HTTP_202_ACCEPTED)

@@ -66,6 +66,25 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    async deleteChat(chatId) {
+      try {
+        await api.delete(`/chat/delete/${chatId}/`);
+        this.chats = this.chats.filter(chat => chat.id !== chatId);
+        this.error = null;
+      } catch (err) {
+        if (!err.response) {
+          this.error = 'Unable to connect to server. Please check if the server is running.';
+        } else {
+          this.error = 'Failed to delete chat. Please try again.';
+        }
+        console.error('Failed to delete chat:', {
+          message: err.message,
+          status: err.response?.status,
+          statusText: err.response?.statusText
+        });
+      }
+    },
+
     async addUserToChat(username, roomName) {
       try {
         await api.post('/chat/add_user/', {

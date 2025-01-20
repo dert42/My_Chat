@@ -3,7 +3,6 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils import timezone
 from asgiref.sync import sync_to_async
-from django.utils.text import slugify
 from django.db import connection
 
 
@@ -59,6 +58,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if self.room_id is not None:
             user_instance = self.user  # Используем аутентифицированного пользователя
             user_instance_id = await self.get_user_id(username=user_instance.username)
+
             @sync_to_async
             def insert_message(msg_content, timestamp, user_id, msg_room_id):
                 with connection.cursor() as cursor:
@@ -114,14 +114,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 cursor.execute('SELECT * FROM "ChatApp_db_message" WHERE room_id = %s ORDER BY id;', [self.room_id])
                 messages = cursor.fetchall()
             return messages
-
-    @database_sync_to_async
-    def get_room_id(self):
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT id FROM "ChatApp_room" WHERE name = %s', [self.room_id])
-            id = cursor.fetchone()
-            id = id[0]
-            return id
 
     @database_sync_to_async
     def get_username(self, id):
