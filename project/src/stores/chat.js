@@ -15,6 +15,7 @@ const token = localStorage.getItem('token');
 if (token) {
   api.defaults.headers.common['Authorization'] = `Token ${token}`;
 }
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     chats: [],
@@ -24,11 +25,13 @@ export const useChatStore = defineStore('chat', {
     error: null,
     isReconnecting: false
   }),
-
   actions: {
     async fetchChats() {
       try {
-        api.defaults.headers.common['Authorization'] = `Token ${localStorage.getItem('token')}`;
+        const token = localStorage.getItem('token');
+        if (token) {
+          api.defaults.headers.common['Authorization'] = `Token ${token}`;
+        }
         const response = await api.get('/chat/list/');
         this.chats = response.data;
         this.error = null;
@@ -68,7 +71,7 @@ export const useChatStore = defineStore('chat', {
 
     async deleteChat(chatId) {
       try {
-        await api.delete(`/chat/delete/${chatId}/`);
+        await api.delete(`/chat/${chatId}/`);
         this.chats = this.chats.filter(chat => chat.id !== chatId);
         this.error = null;
       } catch (err) {
@@ -85,11 +88,11 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    async addUserToChat(username, roomName) {
+    async addUserToChat(username, chatId) {
       try {
         await api.post('/chat/add_user/', {
           username,
-          room_name: roomName
+          chat_id: chatId
         });
         this.error = null;
       } catch (err) {
@@ -106,7 +109,7 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    connectToChat(roomName) {
+    connectToChat(chatId) {
       const token = localStorage.getItem('token');
       if (!token) {
         this.error = 'Authentication required. Please log in.';
@@ -117,17 +120,17 @@ export const useChatStore = defineStore('chat', {
 
       try {
         this.socket = new WebSocket(
-            `ws://${window.location.hostname}:8000/ws/chat/${roomName}/?token=${token}`
+            `ws://${window.location.hostname}:8000/ws/chat/${chatId}/?token=${token}`
         );
 
         this.socket.onmessage = (event) => {
           const message = JSON.parse(event.data);
+
           // Handle different message types
           if (message.type === 'delete') {
             this.messages = this.messages.filter(m => m.id !== message.message_id);
           } else if (message.type === 'edit') {
             const index = this.messages.findIndex(m => m.id === message.message_id);
-            console.log(index)
             if (index !== -1) {
               this.messages[index] = {
                 ...this.messages[index],
@@ -138,10 +141,12 @@ export const useChatStore = defineStore('chat', {
           } else {
             // Regular message
             this.messages.push({
-              id: message.id,
-              message: message.message,
-              user: message.user,
-              datetime: message.datetime
+              id: message.id || Date.now(), // Fallback to timestamp if no ID
+              message: message.message || '',
+              user: message.user || 'Unknown',
+              datetime: message.datetime || new Date().toISOString(),
+              avatar_url: message.avatar_url || null,
+              edited: message.edited || false
             });
           }
         };
@@ -160,7 +165,7 @@ export const useChatStore = defineStore('chat', {
             // Attempt to reconnect after 5 seconds
             setTimeout(() => {
               if (this.error === 'Connection lost. Attempting to reconnect...') {
-                this.connectToChat(roomName);
+                this.connectToChat(chatId);
               }
               this.isReconnecting = false;
             }, 5000);

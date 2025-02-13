@@ -15,7 +15,7 @@ class DB_Message(models.Model):
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     timestamp = models.DateTimeField(auto_now_add=True)
-
+    edited = models.BooleanField()
     def __str__(self):
         return self.content
 

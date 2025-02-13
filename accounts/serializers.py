@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
+from rest_framework import serializers
+from .models import ProfilePicture
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,3 +21,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+
+class ProfilePictureSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProfilePicture
+        fields = ["id", "user", "profile_picture", "avatar_url"]
+        extra_kwargs = {"profile_picture": {"write_only": True}}  # Не показываем сам файл в ответе
+
+    def get_avatar_url(self, obj):
+        print('URLE*RURUKKLRUKj       ', obj.get_avatar_url())
+        return obj.get_avatar_url()

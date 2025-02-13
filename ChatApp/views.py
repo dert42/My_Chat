@@ -4,7 +4,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from django.db import connection
-from channels.db import database_sync_to_async
 
 from .models import Room, DB_Message
 from .serializers import RoomSerializer, DBMessageSerializer, UserSerializer
@@ -49,21 +48,19 @@ def create_chat(request):
 @permission_classes([IsAuthenticated])
 def add_user(request):
     if request.method == 'POST':
+        print(request.data)
         data = request.data
-        room_name = data.get('room_name')
+        chat_id = data.get('chat_id')
         username = data.get('username')
-
-        if not room_name or not username:
+        if not chat_id or not username:
             return Response({'error': 'Имя чата и имя пользователя обязательны.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
             # Получаем объект комнаты и пользователя
-            room = Room.objects.get(name=room_name)
+            room = Room.objects.get(id=chat_id)
             user = User.objects.get(username=username)
 
             # Добавляем пользователя в комнату
             room.users.add(user)
-
             return Response({'username': username}, status=status.HTTP_201_CREATED)
         except Room.DoesNotExist:
             return Response({'error': 'Комната не найдена.'}, status=status.HTTP_404_NOT_FOUND)
@@ -73,13 +70,7 @@ def add_user(request):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_chat(request, room_id):
-    def get_user_id(username):
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT id FROM "auth_user" WHERE username = %s', [username])
-            id = cursor.fetchone()
-            id = id[0]
-            return id
-    user_id = get_user_id(request.user.username)
+    user_id = request.user.id
     with connection.cursor() as cursor:
         cursor.execute('DELETE FROM "ChatApp_room_users"  WHERE room_id = %s AND user_id = %s', [room_id, user_id])
         return Response({'status': 'Done'}, status=status.HTTP_202_ACCEPTED)

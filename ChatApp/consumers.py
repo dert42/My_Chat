@@ -1,9 +1,13 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.http import Http404
 from django.utils import timezone
 from asgiref.sync import sync_to_async
 from django.db import connection
+from django.shortcuts import get_object_or_404
+
+from accounts.models import ProfilePicture
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -25,7 +29,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if data_type == 'message':
             await self.save_message(data)
         if data_type == 'edit':
-            print(data)
 
             @sync_to_async
             def update_message(new_msg, msg_id):
@@ -57,7 +60,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         now = timezone.now()
         if self.room_id is not None:
             user_instance = self.user  # Используем аутентифицированного пользователя
-            user_instance_id = await self.get_user_id(username=user_instance.username)
+            user_instance_id = self.user.id
 
             @sync_to_async
             def insert_message(msg_content, timestamp, user_id, msg_room_id):
@@ -74,25 +77,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
         messages = await self.get_messages()
         for message in messages:
             message_id = message[0]
-            username_id = message[3]
-            username = await self.get_username(username_id)
+            user_id = message[3]
+            username = await self.get_username(user_id)
             timestamp = str(message[2])
+            avatar_url = await self.get_avatar(user_id)
             await self.send(text_data=json.dumps({
                 'id': message_id,
                 'message': message[1],
                 'user': username,
                 'datetime': timestamp,
+                'avatar_url': avatar_url,
+                'edited': False,
             }))
 
     async def broadcast(self, message):
         now = timezone.now()
         username = self.user.username
+        user_id = self.user.id
+        avatar_url = await self.get_avatar(user_id)
         await self.channel_layer.group_send(self.room_group_id,
                                             {
                                                 'type': 'chat_message',
                                                 'message': message['message'],
                                                 'user': username,
                                                 'datetime': now.isoformat(),
+                                                'avatar_url': avatar_url,
+                                                'edited': False,
                                             })
 
     async def chat_message(self, event):
@@ -103,6 +113,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message': message,
             'user': user,
             'datetime': event['datetime'],
+            'avatar_url': event['avatar_url'],
+            'edited': False,
         }))
 
     @database_sync_to_async
@@ -124,9 +136,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return username
 
     @database_sync_to_async
-    def get_user_id(self, username):
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT id FROM "auth_user" WHERE username = %s', [username])
-            id = cursor.fetchone()
-            id = id[0]
-            return id
+    def get_avatar(self, user_id):
+        try:
+            avatar_url = get_object_or_404(ProfilePicture, user_id=user_id)
+            return avatar_url.get_avatar_url()
+        except Http404:
+            return None
