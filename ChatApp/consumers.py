@@ -29,13 +29,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if data_type == 'message':
             await self.save_message(data)
         if data_type == 'edit':
-
             @sync_to_async
             def update_message(new_msg, msg_id):
+                edited = True
                 with connection.cursor() as cursor:
                     cursor.execute('UPDATE "ChatApp_db_message"'
-                                   'SET content = %s'
-                                   'WHERE id = %s', [new_msg, msg_id])
+                                   'SET content = %s,'
+                                   'edited = %s '
+                                   'WHERE id = %s', [new_msg, edited, msg_id])
 
             await update_message(data['new_text'], data['message_id'])
             await self.send(text_data=json.dumps({
@@ -65,8 +66,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             @sync_to_async
             def insert_message(msg_content, timestamp, user_id, msg_room_id):
                 with connection.cursor() as cursor:
-                    cursor.execute('INSERT INTO "ChatApp_db_message" (content, timestamp, user_id, room_id)'
-                                   'VALUES (%s, %s, %s, %s)',
+                    cursor.execute('INSERT INTO "ChatApp_db_message" (content, timestamp, user_id, room_id, edited)'
+                                   'VALUES (%s, %s, %s, %s, FALSE)',
                                    (msg_content, timestamp, user_id, msg_room_id)
                                    )
 
@@ -76,18 +77,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def load_messages(self):
         messages = await self.get_messages()
         for message in messages:
+            print("Load: ", message)
             message_id = message[0]
             user_id = message[3]
             username = await self.get_username(user_id)
             timestamp = str(message[2])
             avatar_url = await self.get_avatar(user_id)
+            edited = bool(message[5])
             await self.send(text_data=json.dumps({
                 'id': message_id,
                 'message': message[1],
                 'user': username,
                 'datetime': timestamp,
                 'avatar_url': avatar_url,
-                'edited': False,
+                'edited': edited,
             }))
 
     async def broadcast(self, message):
@@ -95,6 +98,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         username = self.user.username
         user_id = self.user.id
         avatar_url = await self.get_avatar(user_id)
+        print("Broad: ", message)
         await self.channel_layer.group_send(self.room_group_id,
                                             {
                                                 'type': 'chat_message',
