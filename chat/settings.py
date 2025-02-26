@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'storages',
     'ChatApp',
     'accounts',
+    'video_calls'
 ]
 
 

@@ -1,12 +1,12 @@
-from rest_framework import status, generics
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from django.db import connection
 
-from .models import Room, DB_Message
-from .serializers import RoomSerializer, DBMessageSerializer, UserSerializer
+from .models import Room
+from .serializers import RoomSerializer
 
 
 # Представление для списка чатов
