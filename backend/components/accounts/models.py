@@ -12,3 +12,6 @@ class ProfilePicture(models.Model):
         if self.profile_picture:
             return f"{settings.AWS_S3_ENDPOINT_URL}/{settings.AWS_STORAGE_BUCKET_NAME}/{self.profile_picture.name}"
         return None
+
+    class Meta:
+        app_label = 'accounts'

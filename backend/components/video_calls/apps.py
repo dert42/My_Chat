@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class ChatConfig(AppConfig):
+class VideoCallsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'ChatApp'
+    name = 'components.video_calls'

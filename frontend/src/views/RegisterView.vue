@@ -76,7 +76,7 @@ const handleRegister = async () => {
 
   try {
     isLoading.value = true;
-    await axios.post('http://127.0.0.1:8000/register/', {
+    await axios.post('http://localhost:8000/register/', {
       username: username.value,
       password: password.value,
     });

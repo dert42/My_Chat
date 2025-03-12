@@ -112,6 +112,9 @@ export const useCallStore = defineStore('call', {
         // The VideoCall component will handle displaying the tracks
         // We'll trigger a reactivity update by creating a new Set from participants
         this.participants = new Set([...this.participants]);
+
+        // Force update of peerConnections to trigger reactivity
+        this.peerConnections = new Map(this.peerConnections);
       };
 
       this.peerConnections.set(username, peerConnection);
@@ -119,7 +122,7 @@ export const useCallStore = defineStore('call', {
     },
 
     async handleCallSignal(signal) {
-      const { type, from, target, sdp, candidate, callId } = signal;
+      const { type, from, target, sdp, candidate, callId, participants } = signal;
       console.log('Processing signal:', { type, from, target, callId });
 
       switch (type) {
@@ -275,6 +278,53 @@ export const useCallStore = defineStore('call', {
           }
           break;
         }
+
+        case 'participant-joined': {
+          console.log('New participant joined the call:', from);
+
+          // Add the new participant to our list
+          this.participants.add(from);
+
+          // Create a peer connection for the new participant if we don't have one
+          if (!this.peerConnections.has(from)) {
+            console.log('Creating new peer connection for joined participant:', from);
+            this.createPeerConnection(from);
+
+            // Create and send an offer to the new participant
+            const peerConnection = this.peerConnections.get(from);
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            this.sendCallSignal({
+              type: 'call-invite',
+              target: from,
+              from: useAuthStore().user.username,
+              callId: this.currentCallId,
+              sdp: offer
+            });
+          }
+          break;
+        }
+
+        case 'call-participants': {
+          // Update our participants list with all participants in the call
+          if (participants && Array.isArray(participants)) {
+            console.log('Received participants list:', participants);
+
+            // Add all participants to our set
+            participants.forEach(participant => {
+              if (participant !== useAuthStore().user.username && !this.participants.has(participant)) {
+                this.participants.add(participant);
+
+                // Create peer connections for new participants
+                if (!this.peerConnections.has(participant)) {
+                  this.createPeerConnection(participant);
+                }
+              }
+            });
+          }
+          break;
+        }
       }
     },
 
@@ -288,9 +338,6 @@ export const useCallStore = defineStore('call', {
       console.log('Accepting incoming call from:', from);
 
       try {
-        this.participants.add(from);
-        this.currentCallId = callId;
-
         // Get user media if not already available
         if (!this.localStream) {
           console.log('Getting user media for incoming call');
@@ -302,6 +349,8 @@ export const useCallStore = defineStore('call', {
         }
 
         this.isInCall = true;
+        this.currentCallId = callId;
+        this.participants.add(from);
 
         // Create peer connection
         const peerConnection = await this.createPeerConnection(from);
@@ -330,6 +379,13 @@ export const useCallStore = defineStore('call', {
           from: useAuthStore().user.username,
           callId: callId,
           sdp: answer
+        });
+
+        // Request the current participants list
+        this.sendCallSignal({
+          type: 'get-participants',
+          callId: callId,
+          from: useAuthStore().user.username
         });
 
         // Clear incoming call
@@ -381,15 +437,15 @@ export const useCallStore = defineStore('call', {
 
       try {
         console.log('Adding participant to call:', username);
-        // Create peer connection
+
+        // Create peer connection for the new participant
         const peerConnection = await this.createPeerConnection(username);
 
-        // Create offer
+        // Create and send an offer
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
 
-        // Add to participants and send invite
-        this.participants.add(username);
+        // Send direct call invite to the new participant
         this.sendCallSignal({
           type: 'call-invite',
           target: username,
@@ -397,6 +453,9 @@ export const useCallStore = defineStore('call', {
           callId: this.currentCallId,
           sdp: offer
         });
+
+        // Add to participants locally
+        this.participants.add(username);
       } catch (err) {
         this.error = 'Failed to add participant';
         console.error('Add participant error:', err);

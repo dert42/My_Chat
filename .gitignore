@@ -1,3 +1,3 @@
-/debug.log
-/cloud_config.env
-/Dockerfile
+/backend/debug.log
+/backend/cloud_config.env
+/backend/Dockerfile

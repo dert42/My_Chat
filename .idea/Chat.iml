@@ -3,7 +3,7 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
-      <excludeFolder url="file://$MODULE_DIR$/project/node_modules" />
+      <excludeFolder url="file://$MODULE_DIR$/frontend/node_modules" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.12 (My_Chat) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

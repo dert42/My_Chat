@@ -5,7 +5,7 @@ import { useCallStore } from './call';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: 'http://localhost:8000/',
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json'
@@ -128,7 +128,7 @@ export const useAuthStore = defineStore('auth', {
         const formData = new FormData();
         formData.append('avatar', file);
 
-        const response = await api.post('/user/avatar/', formData, {
+        const response = await api.post('/user/profile/', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }

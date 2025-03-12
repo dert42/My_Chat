@@ -141,6 +141,15 @@ watch(() => callStore.participants, (newParticipants) => {
   });
 }, {deep: true});
 
+// Watch for changes to peerConnections
+watch(() => callStore.peerConnections, (newPeerConnections) => {
+  console.log('PeerConnections changed, updating remote videos');
+  // Update all remote videos when peer connections change
+  callStore.participants.forEach(participant => {
+    updateRemoteVideo(participant);
+  });
+}, {deep: true});
+
 function updateLocalVideo() {
   if (callStore.localStream && localVideo.value) {
     console.log('Updating local video element with stream');
